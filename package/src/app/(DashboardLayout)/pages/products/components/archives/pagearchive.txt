@@ -1,0 +1,56 @@
+'use client';
+import { SetStateAction, useState } from 'react';
+import { Box, Grid } from '@mui/material';
+import PageContainer from '@/app/(DashboardLayout)/components/container/PageContainer';
+import Advancedsearch from './components/Advancedsearch';
+import JquerryList from './components/table';
+
+
+interface Product {
+  _id: string;
+  id: string;
+  productName: string;
+  productType: { name: string } | null;
+  productSubType: { name: string } | null;
+  productStatus: { name: string } | null;
+  creationDate: string;
+  productLocation: {  type : string,name: string } | null; 
+}
+
+const Products = () => {
+  const [products, setProducts] = useState([]);
+  const [searchKey, setSearchKey] = useState<number>(0);
+
+  // Callback function to handle product updates from Advancedsearch
+  const handleProductsUpdate = (updatedProducts: SetStateAction<never[]>) => {
+    setProducts(updatedProducts);
+    setSearchKey(prevKey => prevKey + 1); // Trigger a change in key to force re-render
+  };
+
+
+
+
+
+  return (
+    <PageContainer title="Sample Page" description="this is Sample page">
+      <PageContainer title="Dashboard" description="this is Dashboard">
+        <Box>
+          <Grid container spacing={3}>
+            <Grid item xs={12} lg={12}>
+              <Advancedsearch onProductsUpdate={handleProductsUpdate} />
+            </Grid>
+
+            <Grid item xs={12} lg={12}>
+
+
+            <JquerryList key={searchKey} productsSearched={products} />
+            
+            </Grid>
+          </Grid>
+        </Box>
+      </PageContainer>
+    </PageContainer>
+  );
+};
+
+export default Products;

@@ -1,0 +1,311 @@
+'use client';
+
+import { useState } from 'react';
+import { Box, Grid, Typography, Button, TextField, Card, CardContent, Divider, IconButton, MenuItem } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import PageContainer from '@/app/(DashboardLayout)/components/container/PageContainer';
+import { URLPORT } from '@/app/services/URL';
+import * as Icons from '@mui/icons-material';
+
+export interface Description {
+  _id: string;
+  title: string;
+  description: string;
+}
+
+const SearchComponent = () => {
+  const [descriptions, setDescriptions] = useState<Description[]>([]);
+  const [selectedDescriptions, setSelectedDescriptions] = useState<Set<string>>(new Set());
+  const [titleQuery, setTitleQuery] = useState<string>('');
+  const [descriptionQuery, setDescriptionQuery] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [count, setCount] = useState<string>('');
+  const [isCardExpanded, setIsCardExpanded] = useState<boolean>(false);
+  const [criteria, setCriteria] = useState<'title' | 'description' | 'both'>('both');
+  const [nameToBeReplaced, setNameToBeReplaced] = useState<string>('');
+  const [newName, setNewName] = useState<string>('');
+
+  const highlightText = (text: string, query: string) => {
+    if (!query) return text;
+    const regex = new RegExp(`(${query})`, 'gi');
+    return text.replace(regex, '<span style="background-color: yellow;">$1</span>');
+  };
+
+  const handleSearch = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${URLPORT}/api/search/search-descriptions-title-text?titleQuery=${titleQuery}&descriptionQuery=${descriptionQuery}`);
+      const data = await response.json();
+      setCount(data.totalCount);
+      setDescriptions(data.descriptions || []);
+    } catch (error) {
+      console.error('Error during search:', error);
+    } finally {
+      setLoading(false);
+    }
+    setNameToBeReplaced(descriptionQuery);
+  };
+
+  const handleSelect = (id: string) => {
+    setSelectedDescriptions(prev => {
+      const newSelection = new Set(prev);
+      if (newSelection.has(id)) {
+        newSelection.delete(id);
+      } else {
+        newSelection.add(id);
+      }
+      return newSelection;
+    });
+  };
+
+  const handleSelectAll = () => {
+    const allIds = new Set(descriptions.map(desc => desc._id));
+    setSelectedDescriptions(allIds);
+  };
+
+  const handleResetSelection = () => {
+    setSelectedDescriptions(new Set());
+  };
+
+  const handleConfirmSelection = async (event: React.FormEvent) => {
+    event.preventDefault(); // Prevent the default form submission behavior
+  
+    const ids = Array.from(selectedDescriptions);
+    if (!ids.length || !nameToBeReplaced || !newName) return;
+  
+    try {
+      const response = await fetch(`${URLPORT}/api/search/update-descriptions-fromsearch`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ids,
+          criteria,
+          nameToBeReplaced,
+          newName
+        }),
+      });
+      const result = await response.json();
+      handleResetSelection();
+      handleSearch();
+      console.log('Update result:', result);
+    } catch (error) {
+      console.error('Error updating descriptions:', error);
+    }
+  };
+  
+
+  const toggleCardExpansion = () => {
+    setIsCardExpanded(prev => !prev);
+  };
+
+  return (
+    <PageContainer title="Search Descriptions" description="Display and select descriptions">
+      <PageContainer title="Dashboard" description="this is Dashboard">
+        <Box>
+          <Box
+            sx={{
+              top: 0,
+              backgroundColor: 'background.paper',
+              padding: 2,
+              zIndex: 1000,
+              boxShadow: 1,
+              mb: 3,
+            }}
+          >
+            <Grid container spacing={2}>
+              <Grid item xs={12} lg={12}>
+                <Typography variant="h6" gutterBottom>
+                  Search Descriptions
+                </Typography>
+              </Grid>
+              <Grid item xs={6} lg={6}>
+                <TextField
+                  fullWidth
+                  label="Title"
+                  variant="outlined"
+                  value={titleQuery}
+                  onChange={(e) => setTitleQuery(e.target.value)}
+                  sx={{ mb: 2 }}
+                />
+              </Grid>
+              <Grid item xs={6} lg={6}>
+                <TextField
+                  fullWidth
+                  label="Description"
+                  variant="outlined"
+                  value={descriptionQuery}
+                  onChange={(e) => setDescriptionQuery(e.target.value)}
+                  sx={{ mb: 2 }}
+                />
+              </Grid>
+              <Grid item xs={12} lg={12}>
+                <Button
+                  variant="contained"
+                  size="large"
+                  fullWidth
+                  disabled={loading}
+                  sx={{ 
+                    mt: 0, 
+                    padding: '13px',
+                    backgroundColor: 'primary.main',  // Adjust the color as necessary
+                    borderRadius: '7px', 
+                    '&:hover': {
+                      backgroundColor: 'blue',
+                      borderRadius: '6px',
+                    },
+                  }}
+                  onClick={handleSearch}
+                  startIcon={<Icons.Search />}
+                >
+                  {loading ? 'Searching...' : 'Search'}
+                </Button>
+              </Grid>
+            </Grid>
+          </Box>
+          <Grid container spacing={3}>
+            <Grid item xs={12} lg={12}>
+              <Typography variant="subtitle1" fontWeight={600} component="label" htmlFor="productType" mb="5px">
+                Search Results
+              </Typography>
+            </Grid>
+            <Grid item xs={12} lg={12}>
+              {descriptions.map(desc => (
+                <Card
+                  key={desc._id}
+                  sx={{
+                    mb: 2,
+                    backgroundColor: selectedDescriptions.has(desc._id) ? 'lightgreen' : 'transparent',
+                    cursor: 'pointer',
+                    boxShadow: 3,
+                    transition: 'background-color 0.3s ease',
+                  }}
+                  onClick={() => handleSelect(desc._id)}
+                >
+                  <CardContent>
+                    <Typography
+                      variant="h6"
+                      component="div"
+                      dangerouslySetInnerHTML={{
+                        __html: highlightText(desc.title, titleQuery),
+                      }}
+                    />
+                    <Divider sx={{ my: 1 }} />
+                    <Typography
+                      variant="body1"
+                      component="div"
+                      dangerouslySetInnerHTML={{
+                        __html: highlightText(desc.description, descriptionQuery),
+                      }}
+                    />
+                  </CardContent>
+                </Card>
+              ))}
+            </Grid>
+          </Grid>
+       
+    <Button
+                    variant="contained"
+                    size="large"
+                    
+                   
+                    sx={{ 
+                      position: 'fixed', bottom: 16, right: 16,
+                        padding: '13px',
+                        
+                        backgroundColor: 'primary.main',  // Adjust the color as necessary
+                        borderRadius: '7px', 
+                        '&:hover': {
+                            backgroundColor: 'blue',
+                            borderRadius: '6px',
+                        },
+                    }}
+                    onClick={handleConfirmSelection}
+                    startIcon={<Icons.Check />}
+                >
+                     Confirm Selection
+                </Button>
+          <Card
+            sx={{
+              position: 'fixed',
+              bottom: 75,
+              right: 16,
+              zIndex: 1000,
+              minWidth: 80,
+              boxShadow: 3,
+              p: 2,
+            }}
+          >
+
+            <CardContent>
+              <Box display="flex" flexDirection="column">
+                <Box display="flex" alignItems="center">
+                  <Typography variant="h6" gutterBottom marginRight={2}>
+                    Summary
+                  </Typography>
+                  <IconButton onClick={toggleCardExpansion}>
+                    {isCardExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                  </IconButton>
+                </Box>
+                {isCardExpanded && (
+                  <Box marginTop={2}>
+                    <Typography variant="body1">
+                      Selected Items: {selectedDescriptions.size}
+                    </Typography>
+                    <Typography variant="body1">
+                      Total Items: {count}
+                    </Typography>
+                   
+                    <Box display="flex" flexDirection="column" mt={2}>
+                      <TextField
+                        fullWidth
+                        label="Name to be replaced"
+                        variant="outlined"
+                        value={nameToBeReplaced}
+                        onChange={(e) => setNameToBeReplaced(e.target.value)}
+                        sx={{ mb: 2 }}
+                      />
+                      <TextField
+                        fullWidth
+                        label="New name"
+                        variant="outlined"
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        sx={{ mb: 2 }}
+                      />
+                      <TextField
+                        fullWidth
+                        label="Criteria"
+                        variant="outlined"
+                        select
+                        value={criteria}
+                        onChange={(e) => setCriteria(e.target.value as 'title' | 'description' | 'both')}
+                        sx={{ mb: 2 }}
+                      >
+                        <MenuItem value="title">title</MenuItem>
+                        <MenuItem value="description">Description</MenuItem>
+                        <MenuItem value="both">Both</MenuItem>
+                      </TextField>
+                      <Box display="flex" justifyContent="space-between" mt={2}>
+                        <Button variant="outlined" color="secondary" onClick={handleResetSelection}>
+                          Reset
+                        </Button>
+                        <Button variant="contained" color="primary" onClick={handleSelectAll}>
+                          Select All
+                        </Button>
+                      </Box>
+                    </Box>
+                  </Box>
+                )}
+              </Box>
+            </CardContent>
+          </Card>
+        </Box>
+      </PageContainer>
+    </PageContainer>
+  );
+};
+
+export default SearchComponent;

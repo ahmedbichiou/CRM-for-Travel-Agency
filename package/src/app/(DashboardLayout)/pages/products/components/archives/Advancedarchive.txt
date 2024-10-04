@@ -1,0 +1,546 @@
+import { useEffect, useState } from 'react';
+
+import * as Icons from '@mui/icons-material';
+import {
+    Typography, Box,
+    Grid,
+    Link,
+    Button,
+    Autocomplete,
+    TextField,
+    IconButton,
+    Collapse
+} from '@mui/material';
+import DashboardCard from '@/app/(DashboardLayout)/components/shared/DashboardCard';
+import CustomTextField from '@/app/(DashboardLayout)/components/forms/theme-elements/CustomTextField';
+import { fetchProducts } from '@/app/services/GeneralproductSerivce';
+import { fetchPensions } from '@/app/services/pensionService';
+import { fetchFournisseurs } from '@/app/services/fournisseurService';
+import { fetchProductLocations, fetchProductStatuses, fetchProductSubTypes, fetchProductTypes } from '@/app/services/productService';
+
+// Products arrays
+
+const productLocations = ['Warehouse A', 'Warehouse B', 'Storefront'];
+interface ProductLocation {
+    _id: string;
+    type: string;
+    name: string;
+    __v: number;
+}
+
+interface Product {
+    _id: string;
+    id: string;
+    fournisseur:  { _id: string; name: string;reference: string } | null;
+    productName: string;
+    productType: { _id: string; name: string } | null;
+    productSubType: { _id: string; name: string } | null;
+    productStatus: { _id: string; name: string } | null;
+    creationDate: string;
+    productLocation: ProductLocation[]; // Ensure this is an array
+}
+
+interface AdvancedSearchProps {
+    onProductsUpdate: (products: any) => void;
+  }
+
+  const Advancedsearch: React.FC<AdvancedSearchProps> = ({ onProductsUpdate }) => {
+
+
+
+    const [fournisseur, setfournisseur] = useState<string | null>(null);
+    const [id, setId] = useState<string>('');
+    const [productName, setProductName] = useState<string>('');
+    const [productType, setProductType] = useState<string | null>(null);
+    const [productLocation, setProductLocation] = useState<string | null>(null);
+    const [productStatus, setProductStatus] = useState<string | null>(null);
+    const [productSubType, setProductSubType] = useState<string | null>(null);
+
+    const handleIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newValue = e.target.value;
+        
+        // Update the state with the new input value
+        setId(newValue);
+        
+        // Apply a delay of 0.3 seconds before calling handleSubmit
+      
+        handleSubmit(newValue,productName);
+    
+    };
+    
+
+    const handleProductNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setProductName(e.target.value);
+        handleSubmit(id,e.target.value);
+        
+    };
+
+    const handleProductTypeChange = (event: React.SyntheticEvent, value: string | null) => {
+        setProductType(value);
+       
+      
+    };
+
+    const handleProductLocationChange = (event: React.SyntheticEvent, value: string | null) => {
+        setProductLocation(value);
+        
+        
+    };
+
+    const handleProductStatusChange = (event: React.SyntheticEvent, value: string | null) => {
+        setProductStatus(value);
+      
+        
+    };
+
+    const handleProductSubTypeChange = (event: React.SyntheticEvent, value: string | null) => {
+        setProductSubType(value);
+       
+       
+    };
+    const handlefournisseurChange = (event: React.SyntheticEvent, value: string | null) => {
+        setfournisseur(value);
+       
+       
+
+
+    };
+    const [products, setProducts] = useState<Product[]>([]);
+
+
+
+
+
+    
+    const handleSubmit = (id: string, productname: string) => {
+        
+        // Declare mutable variables to track changes
+        let changeid: boolean = false;
+        let changeproductName: boolean = false;
+        let changeproductType: boolean = false;
+        let changeProductLocation = false;
+        let changeproductStatus: boolean = false;
+        let changeproductSubType: boolean = false;
+        let changeFournisseur: boolean = false;
+    
+        const initial: Product = {
+            _id: '',
+            id: '',
+            productName: '',
+            productType: null,
+            fournisseur: null,
+            productSubType: null,
+            productStatus: null,
+            creationDate: '',
+            productLocation: [] // Initialize as an empty array
+        };
+    
+        if (id !== initial?.id) {
+            changeid = true;
+        }
+        if (productname !== initial?.productName) {
+            changeproductName = true;
+        }
+        if (productType !== initial?.productType) {
+            changeproductType = true;
+        }
+        if (productLocation !== (initial.productLocation.length > 0 ? initial.productLocation[0].name : null)) {
+            changeProductLocation = true;
+        }
+        if (productStatus !== initial?.productStatus) {
+            changeproductStatus = true;
+        }
+        if (productSubType !== initial?.productSubType) {
+            changeproductSubType = true;
+        }
+        if (fournisseur !== initial.fournisseur?.name) {
+            changeFournisseur = true;
+        }
+    
+        if (
+            !changeid &&
+            !changeproductName &&
+            !changeproductType &&
+            !changeProductLocation &&
+            !changeproductStatus &&
+            !changeproductSubType &&
+            !changeFournisseur
+        ) {
+            const sortedProducts = products.sort((a, b) => {
+                const dateA = new Date(a.creationDate);
+                const dateB = new Date(b.creationDate);
+                return dateB.getTime() - dateA.getTime(); // Descending order
+            });
+            onProductsUpdate(sortedProducts);
+            return;
+        }
+    
+        // Filter products based on the changed criteria
+        const filteredProducts = products.filter(product => {
+            const idMatches = !changeid || (id && normalizeString(product.id).includes(normalizeString(id)));
+            const nameMatches = !changeproductName || (productName && normalizeString(product.productName).includes(normalizeString(productName)));
+            const fournisseurMatches = !changeFournisseur || (fournisseur === null || (fournisseur && product.fournisseur?.name && normalizeString(product.fournisseur.name).includes(normalizeString(fournisseur))));
+            const typeMatches = !changeproductType || (productType && product.productType?.name && normalizeString(product.productType.name).includes(normalizeString(productType)));
+            const locationMatches = !changeProductLocation || (
+                product.productLocation &&
+                product.productLocation.length > 0 &&
+                product.productLocation.some(location =>
+                    location.name && normalizeString(location.name).includes(normalizeString(productLocation ?? ""))
+                )
+            );
+            const statusMatches = !changeproductStatus || (productStatus && product.productStatus?.name && normalizeString(product.productStatus.name).includes(normalizeString(productStatus)));
+            const subTypeMatches = !changeproductSubType || (productSubType && product.productSubType?.name && normalizeString(product.productSubType.name).includes(normalizeString(productSubType)));
+    
+            return idMatches && nameMatches && typeMatches && locationMatches && statusMatches && subTypeMatches && fournisseurMatches;
+        });
+    
+        // Sort the filtered products by creationDate in descending order
+        const sortedProducts = filteredProducts.sort((a, b) => {
+            const dateA = new Date(a.creationDate);
+            const dateB = new Date(b.creationDate);
+            return dateB.getTime() - dateA.getTime(); // Descending order
+        });
+    
+        // Print the final sorted search list to the console
+        onProductsUpdate(sortedProducts);
+    };
+    
+
+
+    const toggleExpanded = () => {
+        setExpanded(prev => !prev);
+        if(expanded)
+        {
+            setProductType(null)
+            setProductLocation(null)
+            setProductStatus(null)
+            setProductSubType(null)
+            setfournisseur(null);
+        }
+
+      };
+
+    const normalizeString = (str: string) => {
+        if (!str) return '';
+        return str
+            .toLowerCase() // Convert to lowercase
+            .replace(/[\s-_]+/g, '') // Remove spaces, dashes, and underscores
+            .normalize('NFD') // Normalize accents
+            .replace(/[\u0300-\u036f]/g, ''); // Remove accent characters
+    };
+
+    const fetchOptions = async () => {
+        try {
+            await fetchAndProcessPensions();
+            await fetchAndProcessFournisseurs();
+            await fetchAndProcessProductTypes();
+            await fetchAndProcessProductLocations();
+            await fetchAndProcessProductStatuses();
+            await fetchAndProcessProductSubTypes();
+        } catch (error) {
+            console.error('Error fetching options:', error);
+        }
+    };
+
+
+//DECLARATIONS OPTIONS
+const [pensionOptions, setPensionOptions] = useState<string[]>([]);
+const [fournisseurOptions, setFournisseurOptions] = useState<string[]>([]);
+const [productTypes, setProductTypeOptions] = useState<string[]>([]);
+const [productStatuses, setProductStatusOptions] = useState<string[]>([]);
+const [productSubTypes, setProductSubTypeOptions] = useState<string[]>([]);
+const [productLocationNameOptions, setProductLocationNameOptions] = useState<string[]>([]);
+//END DECLARATIONS OPTIONS
+
+//AUTOCOMPLETE OPTIONS FETCHINGS
+    async function fetchAndProcessPensions() {
+        interface PensionOption {
+            _id: string;
+            name: string;
+        }
+    
+        const pensionResponse: PensionOption[] = await fetchPensions();
+        const names = pensionResponse.map(item => item.name);
+        setPensionOptions(names);
+    }  
+    async function fetchAndProcessFournisseurs() {
+        interface FournisseurOption {
+            _id: string;
+            name: string;
+            reference: string;
+        }
+    
+        const fournisseurResponse: FournisseurOption[] = await fetchFournisseurs();
+        const names = fournisseurResponse.map(item => item.name);
+        setFournisseurOptions(names);
+    }
+    async function fetchAndProcessProductTypes() {
+        interface ProductTypeOption {
+            _id: string;
+            name: string;
+        }
+    
+        const productTypeResponse: ProductTypeOption[] = await fetchProductTypes();
+        const names = productTypeResponse.map(item => item.name);
+        setProductTypeOptions(names);
+    } 
+    async function fetchAndProcessProductStatuses() {
+        interface ProductStatusOption {
+            _id: string;
+            name: string;
+        }
+    
+        const productStatusResponse: ProductStatusOption[] = await fetchProductStatuses();
+        const names = productStatusResponse.map(item => item.name);
+        setProductStatusOptions(names);
+    }
+    async function fetchAndProcessProductSubTypes() {
+        interface ProductSubTypeOption {
+            _id: string;
+            name: string;
+        }
+    
+        const productSubTypeResponse: ProductSubTypeOption[] = await fetchProductSubTypes();
+        const names = productSubTypeResponse.map(item => item.name);
+        setProductSubTypeOptions(names);
+    }
+
+    const fetchAndProcessProductLocations = async () => {
+        try {
+            const productLocationResponse: { _id: string; type: string; name: string }[] = await fetchProductLocations();
+            
+            const map: Record<string, Set<string>> = {};  // Ensure the map is defined
+            const uniqueNames = new Set<string>();  // Use a set to store unique names
+    
+            // Populate the map and unique names set
+            productLocationResponse.forEach(item => {
+                if (!map[item.type]) {
+                    map[item.type] = new Set();
+                }
+                map[item.type].add(item.name);
+                uniqueNames.add(item.name);  // Add the name to the set
+            });
+    
+            // Convert the set of unique names to an array
+            const uniqueNameArray = Array.from(uniqueNames);
+            setProductLocationNameOptions(uniqueNameArray);  // Set the array of unique names
+        } catch (error) {
+            console.error('Error fetching product locations:', error);
+        }
+    };
+// END  AUTOCOMPLETE OPTIONS FETCHINGS
+
+
+const [expanded, setExpanded] = useState(false);
+
+
+useEffect(() => {
+    const getProducts = async () => {
+        const data = await fetchProducts();
+ 
+          
+        setProducts(data);
+
+        const sortedProducts = data.sort((a: { creationDate: string | number | Date; }, b: { creationDate: string | number | Date; }) => {
+            const dateA = new Date(a.creationDate);
+            const dateB = new Date(b.creationDate);
+            return dateB.getTime() - dateA.getTime(); // Descending order
+        });
+        onProductsUpdate(sortedProducts);
+    };
+    getProducts();
+   
+    fetchOptions();
+}, []);
+    return (
+        <DashboardCard title="Search products">
+        <Box sx={{ overflow: 'auto', width: { xs: '280px', sm: 'auto' } }}>
+            <Grid container spacing={2}>
+                {/* ID */}
+                <Grid item xs={6} lg={2}>
+                    <Typography variant="subtitle1" fontWeight={600} component="label" htmlFor="id" mb="5px">
+                        Id
+                    </Typography>
+                    <CustomTextField
+                        variant="outlined"
+                        fullWidth
+                        value={id}
+                        onChange={handleIdChange}
+                    />
+                </Grid>
+
+                {/* Product Name */}
+                <Grid item xs={6} lg={3}>
+                    <Typography variant="subtitle1" fontWeight={600} component="label" htmlFor="productName" mb="5px">
+                        Product Name
+                    </Typography>
+                    <CustomTextField
+                        variant="outlined"
+                        fullWidth
+                        value={productName}
+                        onChange={handleProductNameChange}
+                    />
+                </Grid>
+
+
+                {!expanded ? (
+    <>
+        <Grid item xs={6} lg={2}>
+            <Box mt={3.5}>
+                <Button
+                    color="primary"
+                    variant="contained"
+                    size="large"
+                    fullWidth
+                    onClick={() => handleSubmit(id,productName)}
+                    type="submit"
+                    startIcon={<Icons.Search />}
+                >
+                    Search
+                </Button>
+            </Box>
+        </Grid>
+
+        <Grid item xs={6} lg={2}>
+            <Box mt={3.5}>
+                <Button
+                    color="success"
+                    variant="contained"
+                    size="large"
+                    fullWidth
+                    href="/pages/products/addproducts"
+                    startIcon={<Icons.Add />}
+                >
+                    Add Product
+                </Button>
+            </Box>
+        </Grid>
+    </>
+) : (
+    <Grid item xs={10} lg={4} >
+        <Typography variant="subtitle1" fontWeight={600} component="label" htmlFor="productLocation" mb="5px">
+                                Product Location
+                            </Typography>
+                            <Autocomplete
+                                disablePortal
+                                options={productLocationNameOptions}
+                                value={productLocation}
+                                onChange={handleProductLocationChange}
+                                renderInput={(params) => <TextField {...params} />}
+                            />
+        </Grid>
+)}
+            {expanded ?    <Grid item xs={1} lg={2} /> : <Grid item xs={5.6} lg={2} /> }
+                                {/* Expand/Collapse Button */}
+                                <Grid item xs={1} lg={1}>
+                                {!expanded ?        
+                     <Box mt={3.5} onClick={() => toggleExpanded()}>
+                    <Icons.ExpandMoreOutlined sx={{ fontSize: '2rem', width: '2rem', height: '2rem' }} /></Box>: <Grid item xs={1} lg={1}></Grid>
+                    }
+                </Grid></Grid>
+                {/* Collapsible Fields */}
+                <Collapse in={expanded}>
+                    <Grid container spacing={2}  paddingTop='2px'>
+                        {/* Product Type */}
+                        <Grid item xs={6} lg={3}>
+                            <Typography variant="subtitle1" fontWeight={600} component="label" htmlFor="productType" >
+                                Product Type
+                            </Typography>
+                            <Autocomplete
+                                disablePortal
+                                options={productTypes}
+                                value={productType}
+                                onChange={handleProductTypeChange}
+                                renderInput={(params) => <TextField {...params} />}
+                            />
+                        </Grid>
+
+                        {/* Product Sub-Type */}
+                        <Grid item xs={6} lg={3}>
+                            <Typography variant="subtitle1" fontWeight={600} component="label" htmlFor="productSubType" mb="5px">
+                                Product Sub-Type
+                            </Typography>
+                            <Autocomplete
+                                disablePortal
+                                options={productSubTypes}
+                                value={productSubType}
+                                onChange={handleProductSubTypeChange}
+                                renderInput={(params) => <TextField {...params} />}
+                            />
+                        </Grid>
+                                                {/* Product Status */}
+                                                <Grid item xs={6} lg={3}>
+                            <Typography variant="subtitle1" fontWeight={600} component="label" htmlFor="productStatus" mb="5px">
+                                Product Status
+                            </Typography>
+                            <Autocomplete
+                                disablePortal
+                                options={productStatuses}
+                                value={productStatus}
+                                onChange={handleProductStatusChange}
+                                renderInput={(params) => <TextField {...params} />}
+                            />
+                        </Grid>
+                                                {/* Product Status */}
+                                                <Grid item xs={6} lg={3}>
+                            <Typography variant="subtitle1" fontWeight={600} component="label" htmlFor="productStatus" mb="5px">
+                                Fournisseur
+                            </Typography>
+                            <Autocomplete
+                                disablePortal
+                                options={fournisseurOptions}
+                                value={fournisseur}
+                                onChange={handlefournisseurChange}
+                                renderInput={(params) => <TextField {...params} />}
+                            />
+                        </Grid>
+                        <Grid item xs={0} lg={3}></Grid>
+                        <Grid item xs={0} lg={8}></Grid>
+                         {/*add */}
+                        <Grid item xs={5} lg={2}>
+            <Box mt={3.5}>
+                <Button
+                    color="success"
+                    variant="contained"
+                    size="large"
+                    fullWidth
+                    href="/pages/products/addproducts"
+                    startIcon={<Icons.Add />}
+                >
+                    Add Product
+                </Button>
+            </Box>
+        </Grid>
+         {/*search */}
+                        <Grid item xs={5} lg={2}>
+            <Box mt={3.5}>
+                <Button
+                    color="primary"
+                    variant="contained"
+                    size="large"
+                    fullWidth
+                    onClick={() => handleSubmit(id,productName)}
+                    type="submit"
+                    startIcon={<Icons.Search />}
+                >
+                    Search
+                </Button>
+            </Box>
+        </Grid>
+        <Grid item xs={0} lg={7}></Grid>
+        <Grid item xs={6} lg={1}>
+        {expanded ?        
+                     <Box mt={3.5} onClick={() => toggleExpanded()}>
+                    <Icons.ExpandLessOutlined sx={{ fontSize: '2rem', width: '2rem', height: '2rem' }} /></Box>: <Grid item xs={1} lg={1}></Grid>
+                    }</Grid>
+                    </Grid>
+                </Collapse>
+
+
+            
+        </Box>
+    </DashboardCard>
+    );
+};
+
+export default Advancedsearch;

@@ -1,0 +1,382 @@
+import * as Icons from '@mui/icons-material';
+import React, { useEffect, useState } from 'react';
+import {
+    Typography, Box,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableRow,
+    IconButton,
+    Snackbar,
+    Alert,
+    Paper,
+    TableContainer,
+    TablePagination,
+    Chip
+} from '@mui/material';
+import DashboardCard from '@/app/(DashboardLayout)//components/shared/DashboardCard';
+import { fetchProducts, deleteProduct, fetchProductsPagination } from '@/app/services/GeneralproductSerivce';
+import Link from 'next/link';
+interface ProductLocation {
+    _id: string;
+    type: string;
+    name: string;
+    __v: number;
+}
+
+interface Product {
+    _id: string;
+    id: string;
+    fournisseur:  { _id: string; name: string;reference: string } | null;
+    productName: string;
+    productType: { _id: string; name: string } | null;
+    productSubType: { _id: string; name: string } | null;
+    productStatus: { _id: string; name: string } | null;
+    creationDate: string;
+    productLocation: ProductLocation[]; // Ensure this is an array
+}
+const JquerryList = () => {
+    const [products, setProducts] = useState<Product[]>([]);
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [openSnackbar2, setOpenSnackbar2] = useState(false);
+    const [totalProducts, setTotalProducts] = useState<number>(0);
+    const [totalPages, setTotalPages] = useState<number>(0);
+
+    const getProducts = async () => {
+        try {
+            const data = await fetchProductsPagination(page + 1, rowsPerPage); 
+            setProducts(data.products);
+            console.log(data.products);
+            setTotalProducts(data.totalProducts);
+            setTotalPages(data.totalPages);
+        } catch (error) {
+            console.error('Failed to get products:', error);
+        }
+    };
+
+    useEffect(() => {
+        getProducts();
+    }, [page, rowsPerPage]);
+
+    const handleCloseSnackbar2 = () => {
+        setOpenSnackbar2(false);
+    };
+
+    const handleDelete = async (productId: string) => {
+        try {
+            await deleteProduct(productId);
+            await getProducts(); // Refresh the list
+            setOpenSnackbar2(true);
+        } catch (error) {
+            console.error('Failed to delete product', error);
+        }
+    };
+
+    const handleChangePage = (event: unknown, newPage: number) => {
+        setPage(newPage);
+    };
+
+    const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setRowsPerPage(+event.target.value);
+        setPage(0);
+    };
+
+    return (
+        <DashboardCard title={`List of Products`}>
+        <Box sx={{ height: '100%', overflow: 'hidden', width: { xs: '280px', sm: 'auto' } }}>
+            <Snackbar
+                open={openSnackbar2}
+                autoHideDuration={6000}
+                onClose={handleCloseSnackbar2}
+                sx={{ zIndex: 1400 }}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <Alert
+                    onClose={handleCloseSnackbar2}
+                    severity="error"
+                    sx={{
+                        width: '300px',
+                        fontSize: '0.9rem',
+                        padding: '16px',
+                        boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        backgroundColor: '#d32f2f',
+                        color: 'white',
+                        '& .MuiAlert-icon': {
+                            color: 'white'
+                        },
+                        '& .MuiAlert-action': {
+                            color: 'white'
+                        }
+                    }}
+                    action={
+                        <IconButton
+                            onClick={handleCloseSnackbar2}
+                            color="inherit"
+                            size="small"
+                        >
+                            <Icons.Close fontSize="inherit" />
+                        </IconButton>
+                    }
+                >
+                    Product Deleted!
+                </Alert>
+            </Snackbar>
+            <Paper sx={{ height: 'calc(100% - 64px)', overflow: 'auto' }}>
+                <TableContainer sx={{ maxHeight: 'calc(100% - 80px)', overflow: 'auto' }}>
+                    <Table stickyHeader aria-label="sticky table"
+                       sx={{
+                        whiteSpace: "nowrap",
+                        mt: 2,
+                        minWidth: 800
+                    }}>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>
+                                    <Typography variant="subtitle2" fontWeight={600}>
+                                        Product Code
+                                    </Typography>
+                                </TableCell>
+                                <TableCell>
+                                    <Typography variant="subtitle2" fontWeight={600}>
+                                        Product Name
+                                    </Typography>
+                                </TableCell>
+                                <TableCell>
+                                    <Typography variant="subtitle2" fontWeight={600}>
+                                        Product Type
+                                        <br />
+                                        Product Sub-Type
+                                    </Typography>
+                                </TableCell>
+                                <TableCell>
+                                    <Typography variant="subtitle2" fontWeight={600}>
+                                        Localization
+                                    </Typography>
+                                </TableCell>
+                                <TableCell>
+                                    <Typography variant="subtitle2" fontWeight={600}>
+                                        Creation Date
+                                    </Typography>
+                                    <Typography variant="subtitle2" fontWeight={600}>
+                                        Modification Date
+                                    </Typography>
+                                </TableCell>
+                                <TableCell>
+                                    <Typography variant="subtitle2" fontWeight={600}>
+                                        Status
+                                    </Typography>
+                                </TableCell>
+                                <TableCell align="right">
+                                    <Typography variant="subtitle2" fontWeight={600}>
+                                        Actions
+                                    </Typography>
+                                </TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {products.map((product: any) => (
+                                <TableRow key={product._id} sx={{ borderBottom: '2px solid #ddd' }}>
+                                    
+                                    <TableCell>
+                                        <Link href={`/pages/products/${product.id}`} passHref>
+                                            <Box
+                                                sx={{
+                                                    display: 'inline-block',
+                                                    padding: '8px 16px',
+                                                    borderRadius: '4px',
+                                                    backgroundColor: 'pastelgray.main',
+                                                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+                                                    textDecoration: 'none',
+                                                    transition: 'background-color 0.3s ease',
+                                                    '&:hover': {
+                                                        backgroundColor: 'pastelBlue.dark',
+                                                        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+                                                    },
+                                                }}
+                                            >
+                                                <Typography
+                                                    sx={{
+                                                        fontSize: "15px",
+                                                        fontWeight: "500",
+                                                        cursor: 'pointer',
+                                                        textAlign: 'center'
+                                                    }}
+                                                >
+                                                    {product.id}
+                                                </Typography>
+                                            </Box>
+                                        </Link>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Typography color="textSecondary" variant="subtitle2" fontWeight={400}>
+                                            {product.productName}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Typography color="textSecondary" variant="subtitle2" fontWeight={400}>
+                                            {product.productType.name}
+                                        </Typography>
+                                        <Box
+                                            sx={{
+                                                backgroundColor: 'lightblue',
+                                                borderRadius: '4px',
+                                                padding: '4px 8px',
+                                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+                                                display: 'inline-block',
+                                            }}
+                                        >
+                                            <Typography color="textSecondary" variant="subtitle2" fontWeight={400}>
+                                                {product.productSubType.name}
+                                            </Typography>
+                                        </Box>
+                                    </TableCell>
+                                    <TableCell>
+                                        {product.productLocation.length === 0 ? (
+                                            <Box></Box>
+                                        ) : (
+                                            product.productLocation.map((location: { _id: React.Key | null | undefined; type: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | React.PromiseLikeOfReactNode | null | undefined; name: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | React.PromiseLikeOfReactNode | null | undefined; }) => (
+                                                <Box
+                                                    sx={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        paddingTop: '3px',
+                                                        gap: 1,
+                                                    }} key={location._id}
+                                                >
+                                                    <Box>
+                                                        <Typography color="textSecondary" variant="subtitle2" fontWeight={400}>
+                                                            {location.name}
+                                                        </Typography>
+                                                    </Box>
+                                                    <Box
+                                                        sx={{
+                                                            backgroundColor: 'gray',
+                                                            borderRadius: '4px',
+                                                            padding: '2px 6px',
+                                                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+                                                            color: '#fff',
+                                                            mr: 1,
+                                                        }}
+                                                    >
+                                                        <Typography variant="caption" fontWeight={500}>
+                                                            {location.type}
+                                                        </Typography>
+                                                    </Box>
+                                                </Box>
+                                            ))
+                                        )}
+                                    </TableCell>
+                                    <TableCell>
+                                <Box
+                                    sx={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'flex-start',
+                                    }}
+                                >
+                                    {product.creationDate && !isNaN(new Date(product.creationDate).getTime()) && (
+                                        <Box
+                                            sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                backgroundColor: '#e0f7fa',
+                                                borderRadius: '4px',
+                                                padding: '4px 8px',
+                                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+                                                color: '#00796b',
+                                                marginBottom: '10px'
+                                            }}
+                                        >
+                                           <Icons.Construction sx={{ color:  '#00796b'}} />
+                                            <Box
+                                                sx={{
+                                                    display: 'flex',
+                                                    flexDirection: 'row',
+                                                    gap: 1,
+                                                    ml: 1
+                                                }}
+                                            >
+                                                <Typography variant="caption" fontWeight={400} color="inherit">
+                                                    {new Date(product.creationDate).toLocaleDateString()}
+                                                </Typography>
+                                                <Typography variant="caption" fontWeight={400} color="inherit">
+                                                    {new Date(product.creationDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                    )}
+    
+                                    {product.lastEditDate && !isNaN(new Date(product.lastEditDate).getTime()) && (
+                                        <Box
+                                            sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                backgroundColor: '#dcedc8',
+                                                borderRadius: '4px',
+                                                padding: '4px 8px',
+                                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+                                                color: '#388e3c',
+                                            }}
+                                        ><Icons.Edit sx={{ color: '#388e3c' }} />
+                                            
+                                            <Box
+                                                sx={{
+                                                    display: 'flex',
+                                                    flexDirection: 'row',
+                                                    gap: 1,
+                                                    ml: 1
+                                                }}
+                                            >
+                                                <Typography variant="caption" fontWeight={400} color="inherit">
+                                                    {new Date(product.lastEditDate).toLocaleDateString()}
+                                                </Typography>
+                                                <Typography variant="caption" fontWeight={400} color="inherit">
+                                                    {new Date(product.lastEditDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                    )}
+                                </Box>
+                            </TableCell>
+                                    <TableCell>
+                                    <Chip
+                                        sx={{
+                                            px: "4px",
+                                            backgroundColor: product.productStatus.name === 'Actif' ? 'success.main' : 'error.main',
+                                            color: "#fff",
+                                        }}
+                                        size="small"
+                                        label={product.productStatus.name}
+                                    />
+                                </TableCell>
+                                    <TableCell align="right">
+                                        <IconButton onClick={() => handleDelete(product.id)} color="inherit" size="small">
+                                            <Icons.Delete fontSize="small" />
+                                        </IconButton>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+                <TablePagination
+                rowsPerPageOptions={[5, 10, 25]}
+                component="div"
+                count={totalProducts} // Set total count of items here
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={handleChangePage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+            />
+            </Paper>
+        </Box>
+    </DashboardCard>
+    
+    );
+};
+
+export default JquerryList;
