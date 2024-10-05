@@ -7,9 +7,16 @@ This project is a CRM (Customer Relationship Management) system designed specifi
 ## Table of Contents
 
 - [Features](#features)
-- [Technologies Used and screenshots](#technologies-used)
-- [Installation](#installation)
+- [Technologies Used](#technologies-used)
+- [Features](#Features)
 
+## Technologies Used
+
+- **Frontend**: Next.js, React, TypeScript, SCSS
+- **Backend**: Node.js, Express
+- **Database**: MongoDB Atlas
+- **File Management**: Multer for file uploads
+- **Security**: Bcrypt for password hashing, JWT for authentication
 
 ## Features
 
@@ -34,11 +41,5 @@ This project is a CRM (Customer Relationship Management) system designed specifi
 
 - **Dynamic Frontend**: Built using Next.js for a responsive and interactive user interface.
 
-## Technologies Used
 
-- **Frontend**: Next.js, React, TypeScript, SCSS
-- **Backend**: Node.js, Express
-- **Database**: MongoDB Atlas
-- **File Management**: Multer for file uploads
-- **Security**: Bcrypt for password hashing, JWT for authentication
 
