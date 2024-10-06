@@ -6,7 +6,6 @@ This project is a CRM (Customer Relationship Management) system designed specifi
 
 ## Table of Contents
 
-- [Features](#features)
 - [Technologies Used](#technologies-used)
 - [Features](#Features)
 
