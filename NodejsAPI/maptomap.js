@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const fs = require('fs');
+const fs = require('fs').promises;
 const { Product, ProductType, ProductLocation, ProductSubType, ProductStatus, Pension, Fournisseur, Description } = require('./models/Product');
 const crypto = require('crypto');
 const multer = require('multer');
@@ -252,9 +252,9 @@ const upload = multer({ storage: storage });
 
 async function processJsonFiles() {
     try {
-        // Execute the Python script
+        // Execute the Python script inside the backend container
         await new Promise((resolve, reject) => {
-            exec('python xmltojson.py', (error, stdout, stderr) => {
+            exec('python3 /app/xmltojson.py', (error, stdout, stderr) => {
                 if (error) {
                     console.error(`Error executing Python script: ${error}`);
                     reject(error);
@@ -273,7 +273,7 @@ async function processJsonFiles() {
         for (const file of jsonFiles) {
             console.log(`Processing file: ${file}`);
 
-            const jsonData = JSON.parse(fs.readFileSync(file, 'utf8'));
+            const jsonData = JSON.parse(await fs.readFile(file, 'utf8'));
             const updatedData = removeSymbolsFromObject(jsonData);
             console.log('Modified JSON data:', updatedData);
 
